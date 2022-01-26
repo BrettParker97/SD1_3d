@@ -10,7 +10,6 @@ public class SensorHit : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        Debug.Log("called");
         if (gameObject.name == "destination")
             Debug.LogError("Mission Complete");
 
@@ -23,7 +22,6 @@ public class SensorHit : MonoBehaviour
 
     private void OnCollisionExit(Collision collision)
     {
-        Debug.Log("uncalled");
         Rover.instance.hit.Remove(boxCollider);
         //SpriteShapeRenderer sRend = gameObject.GetComponent<SpriteShapeRenderer>();
         //sRend.color = Color.green;

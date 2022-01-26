@@ -372,7 +372,7 @@ public class Rover : MonoBehaviour
                 {
                     if (bc == inner[i])
                     {
-                        innerHit = i + 1;
+                        innerHit = Mathf.CeilToInt((i + 1) / 3);
                         oldCurrentLoop = currentLoop;
                         currentLoop = 3;
                     }
