@@ -8,8 +8,9 @@ public class SensorHit : MonoBehaviour
     public BoxCollider boxCollider;
 
 
-    private void OnCollisionEnter(Collision collision)
+    private void OnTriggerEnter(Collider other)
     {
+        //Debug.Log(gameObject.name);
         if (gameObject.name == "destination")
             Debug.LogError("Mission Complete");
 
@@ -20,7 +21,7 @@ public class SensorHit : MonoBehaviour
         
     }
 
-    private void OnCollisionExit(Collision collision)
+    private void OnTriggerExit(Collider other)
     {
         Rover.instance.hit.Remove(boxCollider);
         //SpriteShapeRenderer sRend = gameObject.GetComponent<SpriteShapeRenderer>();

@@ -19,6 +19,7 @@ public class Rover : MonoBehaviour
     // 0 = normal, 1 = outter, 2 = inner
     public int currentLoop = 0;
     private Vector3 initalHitPosition;
+    public float initalHitDistance;
     public bool initalDetachHit = false;
 
     void RotateRover(int direction)
@@ -43,10 +44,10 @@ public class Rover : MonoBehaviour
         if (count > 4)
         {
             count = 8 - count;
-            turnRight = true;
+            turnRight = false;
         }    
         else
-            turnRight = false;
+            turnRight = true;
 
         // rotate the damn rover
         if (turnRight)
@@ -61,6 +62,7 @@ public class Rover : MonoBehaviour
         timer = 0;
     }
 
+    int changeCounter = 0;
     void PointTowardsDestination()
     {
         // pick a direction
@@ -120,6 +122,14 @@ public class Rover : MonoBehaviour
             }
         }
 
+        if (best != roverDirection)
+            changeCounter++;
+        else
+            changeCounter--;
+
+        if (changeCounter <= 10)
+            return;
+            
         // rotate rover
         RotateRover(best);
         return;
@@ -161,6 +171,7 @@ public class Rover : MonoBehaviour
             // start outter obj avoidance
             currentLoop = 1;
             initalHitPosition = roverGameobject.transform.position;
+            initalHitDistance = Vector3.Distance(initalHitPosition, destination.transform.position);
             return;
         }
 
@@ -183,7 +194,8 @@ public class Rover : MonoBehaviour
         {
             // check distance is positive to return to normalloop
             Vector3 currentPos = roverGameobject.transform.position;
-            if (currentPos.x > initalHitPosition.x && currentPos.z > initalHitPosition.z)
+            float currentDistance = Vector3.Distance (currentPos, destination.transform.position);
+            if (currentDistance < initalHitDistance)
             {
                 currentLoop = 0;
                 return;
@@ -201,6 +213,7 @@ public class Rover : MonoBehaviour
             currentLoop = 2;
             return;
         }
+
 
         // find first cw direction not hit
         int newDirection = 2;
@@ -225,6 +238,7 @@ public class Rover : MonoBehaviour
         int overAll = roverDirection + newDirection - 1;
         if (overAll >= 9)
             overAll -= 8;
+
         RotateRover(overAll);
         initalDetachHit = false;
     }
@@ -253,7 +267,7 @@ public class Rover : MonoBehaviour
         left = (1 * 3) - 3;
         mid = (1 * 3) - 2;
         right = (1 * 3) - 1;
-        if (!hit.Contains(outter[left]) || !hit.Contains(outter[mid]) || !hit.Contains(outter[right]))
+        if (hit.Contains(outter[left]) || hit.Contains(outter[mid]) || hit.Contains(outter[right]))
             return -1;
 
         // check if we detached from object
@@ -341,10 +355,11 @@ public class Rover : MonoBehaviour
             innerLoopTimer += Time.deltaTime;
             return;
         }
-        // return to outerloop
+        // return to loop that called us
         else
         {
             RotateRover(oldRoverDirection);
+            Debug.Log(currentLoop+" curr " + oldCurrentLoop);
             currentLoop = oldCurrentLoop;
             movingAway = false;
             return;
@@ -366,20 +381,26 @@ public class Rover : MonoBehaviour
         // check for inner circle hit reguardless of loop
         if (currentLoop != 3)
         {
+            Debug.Log("this happen " + currentLoop);
             foreach (BoxCollider bc in hit)
             {
                 for (int i = 0; i < inner.Count; i++)
                 {
                     if (bc == inner[i])
                     {
+                        Debug.Log(currentLoop);
+                        Debug.Log(oldCurrentLoop);
                         innerHit = Mathf.CeilToInt((i + 1) / 3);
-                        oldCurrentLoop = currentLoop;
+                        if (currentLoop != 3)
+                            oldCurrentLoop = currentLoop;
                         currentLoop = 3;
                     }
                 }
             }
         }
 
+        Debug.Log(currentLoop);
+        Debug.Log(oldCurrentLoop);
         // do stuff based on currentLoop
         switch (currentLoop)
         {
