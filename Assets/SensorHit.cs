@@ -6,7 +6,13 @@ using UnityEngine.U2D;
 public class SensorHit : MonoBehaviour
 {
     public BoxCollider boxCollider;
+    public Vector3 initalPosition;
 
+
+    void Start()
+    {
+        initalPosition = gameObject.transform.localPosition;
+    }
 
     private void OnTriggerEnter(Collider other)
     {

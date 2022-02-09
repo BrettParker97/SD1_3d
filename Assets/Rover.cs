@@ -6,6 +6,7 @@ public class Rover : MonoBehaviour
 {
     public static Rover instance;
     public GameObject roverGameobject;
+    public GameObject roverBody;
     public GameObject destination;
 
     public List<BoxCollider> hit = new List<BoxCollider>();
@@ -21,6 +22,19 @@ public class Rover : MonoBehaviour
     private Vector3 initalHitPosition;
     public float initalHitDistance;
     public bool initalDetachHit = false;
+
+    private Vector3 initalRoverPosition;
+    float timer = 1;
+
+    public int innerHit;
+    public bool movingAway = false;
+    public int oldRoverDirection;
+    public int oldCurrentLoop;
+    public float innerLoopTimer;
+    public float innerLoopX = 0.1f;
+
+    int changeCounter = 0;
+    public Vector3 positionDelta;
 
     void RotateRover(int direction)
     {
@@ -56,13 +70,13 @@ public class Rover : MonoBehaviour
             roverGameobject.transform.Rotate(0, -(count * 45), 0);
 
         // set new rover direction
+        
         roverDirection = direction;
 
         // wait 
         timer = 0;
     }
 
-    int changeCounter = 0;
     void PointTowardsDestination()
     {
         // pick a direction
@@ -127,7 +141,10 @@ public class Rover : MonoBehaviour
         else
             changeCounter--;
 
-        if (changeCounter <= 10)
+        if (changeCounter < 0)
+            changeCounter = 0;
+
+        if (changeCounter <= 5)
             return;
             
         // rotate rover
@@ -166,13 +183,30 @@ public class Rover : MonoBehaviour
     {
         // check if we hit somthing in our direction
         // in 3d version we have 3 boxes per direction, ergo check first 3 not 1
-        if (hit.Contains(outter[0]) || hit.Contains(outter[1]) || hit.Contains(outter[2]))
+        if (onSlope)
         {
-            // start outter obj avoidance
-            currentLoop = 1;
-            initalHitPosition = roverGameobject.transform.position;
-            initalHitDistance = Vector3.Distance(initalHitPosition, destination.transform.position);
-            return;
+            if (hitOnSlope)
+            {
+                if (hit.Contains(outter[0]) || hit.Contains(outter[1]) || hit.Contains(outter[2]))
+                {
+                    // start outter obj avoidance
+                    currentLoop = 1;
+                    initalHitPosition = roverGameobject.transform.position;
+                    initalHitDistance = Vector3.Distance(initalHitPosition, destination.transform.position);
+                    return;
+                }
+            }
+        }
+        else
+        {
+            if (hit.Contains(outter[0]) || hit.Contains(outter[1]) || hit.Contains(outter[2]))
+            {
+                // start outter obj avoidance
+                currentLoop = 1;
+                initalHitPosition = roverGameobject.transform.position;
+                initalHitDistance = Vector3.Distance(initalHitPosition, destination.transform.position);
+                return;
+            }
         }
 
         // point toward direction
@@ -247,7 +281,7 @@ public class Rover : MonoBehaviour
     {
         int left, mid, right;
 
-        // check if our detech point as hit yet
+        // check if our detech point hasnt hit yet
         if (!initalDetachHit)
         {
             // check this direction
@@ -288,6 +322,8 @@ public class Rover : MonoBehaviour
                     right = (8 * 3) - 1;
                     if (!hit.Contains(outter[left]) && !hit.Contains(outter[mid]) && !hit.Contains(outter[right]))
                     {
+                        Debug.Log("here3");
+                        hitOnSlope = false;
                         return 2;
                     }
                 }
@@ -321,13 +357,6 @@ public class Rover : MonoBehaviour
         return;
     }
 
-
-    public int innerHit;
-    public bool movingAway = false;
-    public int oldRoverDirection;
-    public int oldCurrentLoop;
-    public float innerLoopTimer;
-    public float innerLoopX = 0.1f;
     void InnerLoop()
     {
         // set up excape plan
@@ -366,10 +395,13 @@ public class Rover : MonoBehaviour
         }
     }
 
+    public bool onSlope = false;
+    public bool hitOnSlope = false;
 
-    float timer = 1;
     void FixedUpdate()
     {
+        Debug.Log(currentLoop);
+
         // dont run a loop if we need to wait for 
         // an update
         if (timer < .3)
@@ -377,30 +409,49 @@ public class Rover : MonoBehaviour
             timer += Time.deltaTime;
             return;
         }
-        
+
+        // check rover rotation
+        float xVal = roverGameobject.transform.localEulerAngles.x;
+        if (xVal > 359)
+            xVal -= 359;
+        if (xVal >= 20)
+            onSlope = true;
+        else
+        {
+            Debug.Log("here1");
+            // reset values
+            onSlope = false;
+            hitOnSlope = false;
+        }
+
+        // if youre on a slope and nothing is touching anything. go to normal loop
+        if (onSlope && hit.Count <= 0)
+        {
+            currentLoop = 0;
+            Debug.Log("here2");
+            hitOnSlope = false;
+        }    
+
         // check for inner circle hit reguardless of loop
         if (currentLoop != 3)
         {
-            Debug.Log("this happen " + currentLoop);
             foreach (BoxCollider bc in hit)
             {
                 for (int i = 0; i < inner.Count; i++)
                 {
                     if (bc == inner[i])
                     {
-                        Debug.Log(currentLoop);
-                        Debug.Log(oldCurrentLoop);
                         innerHit = Mathf.CeilToInt((i + 1) / 3);
                         if (currentLoop != 3)
                             oldCurrentLoop = currentLoop;
                         currentLoop = 3;
+                        if (onSlope)
+                            hitOnSlope = true;
                     }
                 }
             }
         }
 
-        Debug.Log(currentLoop);
-        Debug.Log(oldCurrentLoop);
         // do stuff based on currentLoop
         switch (currentLoop)
         {
@@ -425,5 +476,8 @@ public class Rover : MonoBehaviour
             instance = this;
         else
             Destroy(this);
+
+        initalRoverPosition = roverBody.transform.position;
+        positionDelta = new Vector3();
     }
 }
