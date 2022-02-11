@@ -5,40 +5,46 @@ using UnityEngine;
 public class Rover : MonoBehaviour
 {
     public static Rover instance;
+
     public GameObject roverGameobject;
     public GameObject roverBody;
     public GameObject destination;
 
     public List<BoxCollider> hit = new List<BoxCollider>();
-
     public List<BoxCollider> inner;
     public List<BoxCollider> outter;
-    public float speed = 0.04f;
 
+    private Vector3 initalHitPosition;
     private Vector3 roverSpeed = new Vector3();
+    public Vector3 positionDelta;
+    public Vector3 initalRoverPosition;
+
+    public bool initalDetachHit = false;
+    public bool onSlope = false;
+    public bool hitOnSlope = false;
+    public bool movingAway = false;
+    public bool rotating = false;
+    public bool turnRight;
+
     private int roverDirection = 1;
     // 0 = normal, 1 = outter, 2 = inner
     public int currentLoop = 0;
-    private Vector3 initalHitPosition;
-    public float initalHitDistance;
-    public bool initalDetachHit = false;
-
-    private Vector3 initalRoverPosition;
-    float timer = 1;
-
     public int innerHit;
-    public bool movingAway = false;
     public int oldRoverDirection;
     public int oldCurrentLoop;
+    public static int DIRECTIONSAMPLEMIN = 50; // fixedUpdate called 50/second
+    public int changeCounter = 0;
+    public int turnCount;
+    private int rotateAmount = 0;
+
     public float innerLoopTimer;
     public float innerLoopX = 0.1f;
-
-    int changeCounter = 0;
-    public Vector3 positionDelta;
+    public float initalHitDistance;
+    public float timer = 1;
+    public float speed = 0.04f;
 
     void RotateRover(int direction)
     {
-        bool turnRight;
 
         if (direction == roverDirection)
             return;
@@ -63,18 +69,17 @@ public class Rover : MonoBehaviour
         else
             turnRight = true;
 
-        // rotate the damn rover
-        if (turnRight)
-            roverGameobject.transform.Rotate(0, (count * 45), 0);
-        else
-            roverGameobject.transform.Rotate(0, -(count * 45), 0);
-
         // set new rover direction
-        
         roverDirection = direction;
 
         // wait 
         timer = 0;
+
+        // set rotation count
+        rotateAmount = count * 45;
+        Debug.Log(rotateAmount + " rotateAmount assigned");
+        rotating = true;
+        return;
     }
 
     void PointTowardsDestination()
@@ -144,7 +149,7 @@ public class Rover : MonoBehaviour
         if (changeCounter < 0)
             changeCounter = 0;
 
-        if (changeCounter <= 5)
+        if (changeCounter <= DIRECTIONSAMPLEMIN)
             return;
             
         // rotate rover
@@ -395,12 +400,34 @@ public class Rover : MonoBehaviour
         }
     }
 
-    public bool onSlope = false;
-    public bool hitOnSlope = false;
-
     void FixedUpdate()
     {
         Debug.Log(currentLoop);
+
+        // rover is rotating
+        if (rotating)
+        {
+            Debug.Log(rotateAmount + " in rotate");
+            Debug.Log(roverGameobject.transform.rotation.y * Mathf.Deg2Rad);
+            if (turnRight)
+            {
+                float currentAngle = roverGameobject.transform.rotation.y * Mathf.Deg2Rad;
+                roverGameobject.transform.Rotate(0, currentAngle + 1, 0);
+                rotateAmount -= 1;
+                if (rotateAmount <= 0)
+                    rotating = false;
+            }
+            else
+            {
+                float currentAngle = roverGameobject.transform.rotation.y * Mathf.Deg2Rad;
+                roverGameobject.transform.Rotate(0, currentAngle - 1, 0);
+                rotateAmount -= 1;
+                if (rotateAmount <= 0)
+                    rotating = false;
+            }
+            return;
+        }
+
 
         // dont run a loop if we need to wait for 
         // an update

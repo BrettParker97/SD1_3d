@@ -17,8 +17,9 @@ public class SensorHit : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         //Debug.Log(gameObject.name);
-        if (gameObject.name == "destination")
+        if (other.gameObject.name == "Destination")
             Debug.LogError("Mission Complete");
+
 
         Rover.instance.hit.Add(boxCollider);
         //SpriteShapeRenderer sRend = gameObject.GetComponent<SpriteShapeRenderer>();
