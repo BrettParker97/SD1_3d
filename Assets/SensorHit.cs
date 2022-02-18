@@ -8,6 +8,9 @@ public class SensorHit : MonoBehaviour
     public BoxCollider boxCollider;
     public Vector3 initalPosition;
 
+    public int direction;
+    public int col;
+    public int row;
 
     void Start()
     {

@@ -55,7 +55,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+     <Compile Include="Assets\OnStartup.cs" />
      <Compile Include="Assets\Rover.cs" />
+     <Compile Include="Assets\Sensing.cs" />
      <Compile Include="Assets\SensorHit.cs" />
      <Compile Include="Assets\test.cs" />
  <Reference Include="UnityEngine">
