@@ -402,6 +402,9 @@ public class Rover : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (Sensing.instance != null)
+            Debug.Log(Sensing.instance.getDirDist(1));
+
         Debug.Log(currentLoop);
 
         // rover is rotating

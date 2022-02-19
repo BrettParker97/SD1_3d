@@ -11,6 +11,7 @@ public class SensorHit : MonoBehaviour
     public int direction;
     public int col;
     public int row;
+    public float distance;
 
     void Start()
     {
@@ -19,12 +20,16 @@ public class SensorHit : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        // return if sensing isnt created yet
+        if (Sensing.instance == null)
+            return;
+
         //Debug.Log(gameObject.name);
         if (other.gameObject.name == "Destination")
             Debug.LogError("Mission Complete");
 
 
-        Rover.instance.hit.Add(boxCollider);
+        Sensing.instance.hit.Add(this);
         //SpriteShapeRenderer sRend = gameObject.GetComponent<SpriteShapeRenderer>();
         //sRend.color = Color.red;
         //Debug.Log("IM in " + gameObject.name);
@@ -33,7 +38,11 @@ public class SensorHit : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
-        Rover.instance.hit.Remove(boxCollider);
+        // return if sensing isnt created yet
+        if (Sensing.instance == null)
+            return;
+
+        Sensing.instance.hit.Remove(this);
         //SpriteShapeRenderer sRend = gameObject.GetComponent<SpriteShapeRenderer>();
         //sRend.color = Color.green;
         //Debug.Log("IM out " + gameObject.name);
