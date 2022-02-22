@@ -7,15 +7,9 @@ public class Rover : MonoBehaviour
     public static Rover instance;
 
     public GameObject roverGameobject;
-    public GameObject roverBody;
     public GameObject destination;
 
-    public List<BoxCollider> hit = new List<BoxCollider>();
-    public List<BoxCollider> inner;
-    public List<BoxCollider> outter;
-
     private Vector3 initalHitPosition;
-    private Vector3 roverSpeed = new Vector3();
     public Vector3 positionDelta;
     public Vector3 initalRoverPosition;
 
@@ -26,68 +20,28 @@ public class Rover : MonoBehaviour
     public bool rotating = false;
     public bool turnRight;
 
-    private int roverDirection = 1;
+    public int roverDirection = 1;
     // 0 = normal, 1 = outter, 2 = inner
-    public int currentLoop = 0;
+    private int currentLoop = 0;
     public int innerHit;
     public int oldRoverDirection;
     public int oldCurrentLoop;
-    public static int DIRECTIONSAMPLEMIN = 50; // fixedUpdate called 50/second
+    public static int DIRECTIONSAMPLEMIN = 10; // fixedUpdate called 50/second
     public int changeCounter = 0;
     public int turnCount;
-    private int rotateAmount = 0;
+    public int rotateAmount = 0;
 
     public float innerLoopTimer;
     public float innerLoopX = 0.1f;
     public float initalHitDistance;
-    public float timer = 1;
-    public float speed = 0.04f;
-
-    void RotateRover(int direction)
-    {
-
-        if (direction == roverDirection)
-            return;
-
-        // right turn
-        int temp = roverDirection;
-        int count = 0;
-        while (temp != direction)
-        {
-            temp++;
-            count++;
-            if (temp >= 9)
-                temp -= 8;
-        }
-
-        // if right turn > 4 then turn left instead
-        if (count > 4)
-        {
-            count = 8 - count;
-            turnRight = false;
-        }    
-        else
-            turnRight = true;
-
-        // set new rover direction
-        roverDirection = direction;
-
-        // wait 
-        timer = 0;
-
-        // set rotation count
-        rotateAmount = count * 45;
-        Debug.Log(rotateAmount + " rotateAmount assigned");
-        rotating = true;
-        return;
-    }
+    public float timer = 0;
+    public float manuallySetSpeed = .5f; // mph
 
     void PointTowardsDestination()
     {
         // pick a direction
         Vector3 desPos = destination.transform.position;
         Vector3 roverPos = roverGameobject.transform.position;
-
 
         // angle calc for traingle
         float hyp = Mathf.Sqrt(Mathf.Pow(desPos.x - roverPos.x, 2) + Mathf.Pow(desPos.z - roverPos.z, 2));
@@ -151,36 +105,9 @@ public class Rover : MonoBehaviour
 
         if (changeCounter <= DIRECTIONSAMPLEMIN)
             return;
-            
+
         // rotate rover
-        RotateRover(best);
-        return;
-    }
-
-    void MoveRover()
-    {
-
-        // create vector for movement
-        Vector3 moveVec = new Vector3();
-        if (roverDirection == 1)                    // up
-            moveVec = new Vector3(0, 0, speed);
-        else if (roverDirection == 3)               // right
-            moveVec = new Vector3(speed, 0, 0);
-        else if (roverDirection == 5)               // down
-            moveVec = new Vector3(0, 0, -speed);
-        else if (roverDirection == 7)               // left
-            moveVec = new Vector3(-speed, 0, 0);
-        else if (roverDirection == 2)               // quad 1
-            moveVec = new Vector3(speed/2, 0, speed / 2);
-        else if (roverDirection == 4)               // quad 4
-            moveVec = new Vector3(speed / 2, 0, -speed / 2);
-        else if (roverDirection == 6)               // quad 3
-            moveVec = new Vector3(-speed / 2, 0, -speed / 2);
-        else if (roverDirection == 8)               // quad 2
-            moveVec = new Vector3(-speed / 2, 0, speed / 2);
-
-        // move rover
-        roverGameobject.transform.position += moveVec;
+        Motors.instance.RotateRover(best);
         return;
     }
 
@@ -192,7 +119,7 @@ public class Rover : MonoBehaviour
         {
             if (hitOnSlope)
             {
-                if (hit.Contains(outter[0]) || hit.Contains(outter[1]) || hit.Contains(outter[2]))
+                if (checkDirection(1, 2))
                 {
                     // start outter obj avoidance
                     currentLoop = 1;
@@ -204,7 +131,7 @@ public class Rover : MonoBehaviour
         }
         else
         {
-            if (hit.Contains(outter[0]) || hit.Contains(outter[1]) || hit.Contains(outter[2]))
+            if (checkDirection(1, 2))
             {
                 // start outter obj avoidance
                 currentLoop = 1;
@@ -217,9 +144,6 @@ public class Rover : MonoBehaviour
         // point toward direction
         PointTowardsDestination();
 
-        // move rover if not hitting something
-        MoveRover();
-
         return;
     }
 
@@ -227,9 +151,14 @@ public class Rover : MonoBehaviour
     {
         // dont change things if we dont need to
         int res = OutterLoop();
+
+        //Debug.Log(res);
+
         if (res == 1)   // continue outterloop
+        {
             return;
-        if (res == 2)   // we just disconnected
+        }
+        if (res == 2)   // we are about to disconnect
         {
             // check distance is positive to return to normalloop
             Vector3 currentPos = roverGameobject.transform.position;
@@ -240,19 +169,15 @@ public class Rover : MonoBehaviour
                 return;
             }
 
-            // turn to last connection - 1 and keep running outterloop
-            int newDir = 1;
-            if (roverDirection - 4 > 0)
-                newDir = roverDirection - 4;
-            else
-                newDir = roverDirection - 4 + 8;
-            RotateRover(newDir);
+            // turn to breakoff point + 1
+            int newDir = roverDirection + 6;
+            if (newDir >= 9)
+                newDir -= 8;
+            Motors.instance.RotateRover(newDir);
             initalDetachHit = false;
-
-            currentLoop = 2;
+            currentLoop = 1;
             return;
         }
-
 
         // find first cw direction not hit
         int newDirection = 2;
@@ -263,10 +188,7 @@ public class Rover : MonoBehaviour
                 Debug.LogError("No new direction that isn't in hit buffer");
 
             // check this direction
-            int left = (newDirection * 3) - 3;
-            int mid = (newDirection * 3) - 2;
-            int right = (newDirection * 3) - 1;
-            if (!hit.Contains(outter[left]) || !hit.Contains(outter[mid]) || !hit.Contains(outter[right]))
+            if (!checkDirection(newDirection, 2))
                 break;
 
             // increment direction
@@ -278,56 +200,34 @@ public class Rover : MonoBehaviour
         if (overAll >= 9)
             overAll -= 8;
 
-        RotateRover(overAll);
+        Motors.instance.RotateRover(overAll);
         initalDetachHit = false;
     }
 
     int OutterLoop()
     {
-        int left, mid, right;
-
         // check if our detech point hasnt hit yet
         if (!initalDetachHit)
         {
-            // check this direction
-            // 6 is direction we are checking
-            // 3 for amount of boxes per direction
-            // 1,2,3 for array offset
-            left = (6 * 3) - 3;
-            mid = (6 * 3) - 2;
-            right = (6 * 3) - 1;
-            if (hit.Contains(outter[left]) || hit.Contains(outter[mid]) || hit.Contains(outter[right]))
+            if (checkDirection(6, 2) || checkDirection(7, 2))
                 initalDetachHit = true;
         }
 
-        MoveRover();
         // check if we hit somthing in our direction
         // check this direction
-        left = (1 * 3) - 3;
-        mid = (1 * 3) - 2;
-        right = (1 * 3) - 1;
-        if (hit.Contains(outter[left]) || hit.Contains(outter[mid]) || hit.Contains(outter[right]))
+        if (checkDirection(1, 2))
             return -1;
+            
 
         // check if we detached from object
         if (initalDetachHit)
         {
-            left = (6 * 3) - 3;
-            mid = (6 * 3) - 2;
-            right = (6 * 3) - 1;
-            if (!hit.Contains(outter[left]) && !hit.Contains(outter[mid]) && !hit.Contains(outter[right]))
+            if (!checkDirection(6, 2))
             {
-                left = (7 * 3) - 3;
-                mid = (7 * 3) - 2;
-                right = (7 * 3) - 1;
-                if (!hit.Contains(outter[left]) && !hit.Contains(outter[mid]) && !hit.Contains(outter[right]))
+                if (!checkDirection(7, 2))
                 {
-                    left = (8 * 3) - 3;
-                    mid = (8 * 3) - 2;
-                    right = (8 * 3) - 1;
-                    if (!hit.Contains(outter[left]) && !hit.Contains(outter[mid]) && !hit.Contains(outter[right]))
+                    if (distances[7] > 570)
                     {
-                        Debug.Log("here3");
                         hitOnSlope = false;
                         return 2;
                     }
@@ -341,24 +241,19 @@ public class Rover : MonoBehaviour
     void MoveTillHit()
     {
         // check if we hit somthing in our direction
-        int left = (2 * 3) - 3;
-        int mid = (2 * 3) - 2;
-        int right = (2 * 3) - 1;
-        if (hit.Contains(outter[left]) || hit.Contains(outter[mid]) || hit.Contains(outter[right]))
+        if (checkDirection(2, 2))
         {
             // turn the right direction
-            int newDir = roverDirection + 2;
+            int newDir = roverDirection + 1;
             if (newDir >= 9)
                 newDir -= 8;
-            RotateRover(newDir);
+            Motors.instance.RotateRover(newDir);
 
             // start outter obj avoidance
             currentLoop = 1;
             return;
         }
 
-        // move rover if not hitting something
-        MoveRover();
         return;
     }
 
@@ -376,7 +271,7 @@ public class Rover : MonoBehaviour
                 newDirection -= 8;
             oldRoverDirection = roverDirection;
 
-            RotateRover(newDirection);
+            Motors.instance.RotateRover(newDirection);
             movingAway = true;
             innerLoopTimer = 0f;
             initalDetachHit = false;
@@ -385,58 +280,125 @@ public class Rover : MonoBehaviour
         // move rover till object is outside of inner circle
         if (innerLoopTimer < innerLoopX)
         {
-            MoveRover();
             innerLoopTimer += Time.deltaTime;
             return;
         }
         // return to loop that called us
         else
         {
-            RotateRover(oldRoverDirection);
-            Debug.Log(currentLoop+" curr " + oldCurrentLoop);
+            Motors.instance.RotateRover(oldRoverDirection);
             currentLoop = oldCurrentLoop;
             movingAway = false;
             return;
         }
     }
 
+    private bool checkInnerLoop()
+    {
+        foreach (float f in distances)
+        {
+            if (f <= innerLoopDis)
+                return true;
+        }
+        return false;
+    }
+    private bool checkMiddleLoop()
+    {
+        foreach (float f in distances)
+        {
+            if (f <= middleLoopDis)
+                return true;
+        }
+        return false;
+    }
+    private bool checkOuterLoop()
+    {
+        foreach (float f in distances)
+        {
+            if (f <= outerLoopDis)
+                return true;
+        }
+        return false;
+    }
+
+    // checks if distance in a direction is <= certian 
+    private bool checkDirection(int direction, int level)
+    {
+        switch (level)
+        {
+            // inner loop
+            case 1:
+                if (distances[direction - 1] <= innerLoopDis)
+                    return true;
+                break;
+            // middle loop
+            case 2:
+                if (distances[direction - 1] <= middleLoopDis)
+                    return true;
+                break;
+            // outer loop
+            case 3:
+                if (distances[direction - 1] <= outerLoopDis)
+                    return true;
+                break;
+        }
+        return false;
+    }
+
+    public float sensorUpdateSpeed = .5f;       // updates a second
+    private float sensorTimeToNextUpdate = 0f;  // time to next sensor update
+    private float sensorUpdateTimer = 0f;       // this pauses main loop to sim sensor update time 
+    public List<float> distances;
+
+    public float outerLoopDis = 1200;   // in mm
+    public float middleLoopDis = 600;   // in mm
+    public float innerLoopDis = 160;    // in mm
+
     void FixedUpdate()
     {
-        if (Sensing.instance != null)
-            Debug.Log(Sensing.instance.getDirDist(1));
-
-        Debug.Log(currentLoop);
+        // check all timers that would stop the main proc
+        // waiting for sensor data to update
+        if (sensorUpdateTimer > 0)
+        {
+            sensorUpdateTimer -= Time.deltaTime;
+            return;
+        }
+        else
+            sensorTimeToNextUpdate -= Time.deltaTime;
 
         // rover is rotating
         if (rotating)
         {
-            Debug.Log(rotateAmount + " in rotate");
-            Debug.Log(roverGameobject.transform.rotation.y * Mathf.Deg2Rad);
             if (turnRight)
             {
-                float currentAngle = roverGameobject.transform.rotation.y * Mathf.Deg2Rad;
-                roverGameobject.transform.Rotate(0, currentAngle + 1, 0);
+                roverGameobject.transform.Rotate(0, 1, 0);
                 rotateAmount -= 1;
                 if (rotateAmount <= 0)
+                {
                     rotating = false;
+                }
             }
             else
             {
-                float currentAngle = roverGameobject.transform.rotation.y * Mathf.Deg2Rad;
-                roverGameobject.transform.Rotate(0, currentAngle - 1, 0);
+                roverGameobject.transform.Rotate(0, -1, 0);
                 rotateAmount -= 1;
                 if (rotateAmount <= 0)
+                {
                     rotating = false;
+                }
             }
+
+            if (rotating == false)
+                Motors.instance.StartRover(manuallySetSpeed);
             return;
         }
 
-
-        // dont run a loop if we need to wait for 
-        // an update
-        if (timer < .3)
+        // check if we need to update anything
+        if (sensorTimeToNextUpdate <= 0)
         {
-            timer += Time.deltaTime;
+            Sensing.instance.UpdateIRData();
+            sensorUpdateTimer = Sensing.sensingTime;
+            sensorTimeToNextUpdate = sensorUpdateSpeed - sensorUpdateTimer;
             return;
         }
 
@@ -448,37 +410,38 @@ public class Rover : MonoBehaviour
             onSlope = true;
         else
         {
-            Debug.Log("here1");
             // reset values
             onSlope = false;
             hitOnSlope = false;
         }
 
         // if youre on a slope and nothing is touching anything. go to normal loop
-        if (onSlope && hit.Count <= 0)
+        if (onSlope && checkInnerLoop() && checkMiddleLoop())
         {
             currentLoop = 0;
-            Debug.Log("here2");
             hitOnSlope = false;
-        }    
+        }
 
+        Debug.Log("currentLoop: " + currentLoop);
         // check for inner circle hit reguardless of loop
         if (currentLoop != 3)
         {
-            foreach (BoxCollider bc in hit)
+            if (checkInnerLoop())
             {
-                for (int i = 0; i < inner.Count; i++)
+                // what direction did we hit
+                int innerHit;
+                for (innerHit = 1; innerHit < 9; innerHit++)
                 {
-                    if (bc == inner[i])
-                    {
-                        innerHit = Mathf.CeilToInt((i + 1) / 3);
-                        if (currentLoop != 3)
-                            oldCurrentLoop = currentLoop;
-                        currentLoop = 3;
-                        if (onSlope)
-                            hitOnSlope = true;
-                    }
+                    if (checkDirection(innerHit, 1))   // could break if somehow were not hitting anything
+                        break;
                 }
+
+                // change loop
+                if (currentLoop != 3)
+                    oldCurrentLoop = currentLoop;
+                currentLoop = 3;
+                if (onSlope)
+                    hitOnSlope = true;
             }
         }
 
@@ -507,7 +470,13 @@ public class Rover : MonoBehaviour
         else
             Destroy(this);
 
-        initalRoverPosition = roverBody.transform.position;
         positionDelta = new Vector3();
+        distances = new List<float>();
+        for (int i = 0; i < 8; i++)
+            distances.Add(1200f);
+        if (Motors.instance != null)
+            Motors.instance.StartMotors(manuallySetSpeed);
+        else
+            Debug.LogError("Motors cant be started, they dont exists");
     }
 }

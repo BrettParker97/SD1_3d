@@ -50,6 +50,7 @@ public class OnStartup : MonoBehaviour
                 {
                     // save gameobject to dictionary
                     gameObjectsInDir[countd].Add(sh);
+                    sh.gameObject.GetComponent<MeshRenderer>().forceRenderingOff = true;
 
                     // set ID
                     sh.direction = countd + 1;

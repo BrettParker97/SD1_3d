@@ -55,6 +55,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+     <Compile Include="Assets\Motors.cs" />
      <Compile Include="Assets\OnStartup.cs" />
      <Compile Include="Assets\Rover.cs" />
      <Compile Include="Assets\Sensing.cs" />

@@ -5,8 +5,9 @@ using UnityEngine;
 public class Sensing : MonoBehaviour
 {
     static public Sensing instance;
-    static public float sensingTime = .2f;
-    static private float maxDistance = 1200;
+    static public float sensingTime = .4f;
+    static public float maxDistance = 1200;
+    private float updateTimer = 0;
 
     // list of all current box colliders that are "hitting" an object
     public List<SensorHit> hit = new List<SensorHit>();
@@ -30,9 +31,31 @@ public class Sensing : MonoBehaviour
         hit = new List<SensorHit>();
     }
 
+    public void UpdateIRData()
+    {
+        // set timer then update Rover distance data
+        updateTimer = sensingTime;
+    }
+
     // runs 50 times a second
     void FixedUpdate()
     {
+        // update rover data
+        if (updateTimer > 0)
+            updateTimer -= Time.deltaTime;
+        else
+        {
+            if (updateTimer != -10)
+            {
+                // update rover data
+                for (int i = 0; i < Rover.instance.distances.Count; i++)
+                {
+                    Rover.instance.distances[i] = distances[i];
+                }
+                updateTimer = -10;
+            }
+        }
+
         // keep distances up to date at all times
         for (int i = 0; i < 8 ; i++)
         {
@@ -53,10 +76,5 @@ public class Sensing : MonoBehaviour
             // save minDistance in this direction
             distances[i] = minDistance;
         }
-    }
-
-    public float getDirDist(int dir)
-    {
-        return distances[dir - 1];
     }
 }
